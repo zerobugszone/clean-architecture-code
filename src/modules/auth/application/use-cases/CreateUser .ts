@@ -1,6 +1,6 @@
-import { IUserRepository } from "../../domain/repositories/IUserRepository";
+import { IUserRepository } from '../../domain/repositories/IUserRepository';
 
-import { CreateUserData } from "../dto/User";
+import { CreateUserData } from '../dto/User';
 
 // Handles the application workflow for creating a new User.
 export class CreateUserUseCase {
@@ -8,9 +8,7 @@ export class CreateUserUseCase {
     //
     // The use case depends on the repository contract,
     // not on a specific database or persistence implementation.
-    constructor(
-        private readonly userRepo: IUserRepository
-    ) { }
+    constructor(private readonly userRepo: IUserRepository) { }
 
     // Executes the user creation workflow.
     //
