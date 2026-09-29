@@ -18,6 +18,7 @@
     "typescript": "5.9.2"
   },
   "dependencies": {
+    "argon2": "^0.45.1",
     "express": "^5.0.0",
     "mongoose": "^9.10.2"
   }
