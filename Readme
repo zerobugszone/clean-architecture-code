@@ -1,0 +1,499 @@
+# Node.js Clean Architecture Practice
+
+A backend practice project built with **Node.js, TypeScript, Express, MongoDB, and Mongoose**.
+
+The main goal of this project is to practice building a scalable backend using **Clean Architecture, Dependency Inversion, Repository Pattern, Dependency Injection, and Use Cases**.
+
+---
+
+## Tech Stack
+
+* Node.js
+* TypeScript
+* Express.js
+* MongoDB
+* Mongoose
+* pnpm
+* Prettier
+
+---
+
+## Project Architecture
+
+This project follows a simplified Clean Architecture approach.
+
+```text
+src/
+├── domain/
+│   ├── entities/
+│   │   └── User.ts
+│   └── repositories/
+│       └── IUserRepository.ts
+│
+├── application/
+│   ├── dto/
+│   │   └── User.ts
+│   └── use-cases/
+│       └── user/
+│           └── CreateUserUseCase.ts
+│
+├── infrastructure/
+│   ├── mongoose/
+│   │   └── models/
+│   │       └── UserModel.ts
+│   └── repositories/
+│       └── UserRepository.ts
+│
+└── presentation/
+    ├── controllers/
+    │   └── UserController.ts
+    ├── factories/
+    │   └── UserFactory.ts
+    └── routes/
+        └── userRoutes.ts
+```
+
+---
+
+## Architecture Flow
+
+The application follows this dependency flow:
+
+```text
+HTTP Request
+     ↓
+Route
+     ↓
+Controller
+     ↓
+Factory
+     ↓
+Use Case
+     ↓
+IUserRepository
+     ↓
+UserRepository
+     ↓
+UserModel
+     ↓
+MongoDB
+```
+
+### Responsibilities
+
+#### Domain
+
+Contains the core business concepts of the application.
+
+```text
+domain/
+├── entities/
+└── repositories/
+```
+
+The domain should not depend on Express, Mongoose, MongoDB, or other infrastructure technologies.
+
+---
+
+#### Application
+
+Contains application-specific business workflows.
+
+```text
+application/
+├── dto/
+└── use-cases/
+```
+
+Use cases define what the application can do.
+
+Example:
+
+```text
+CreateUserUseCase
+```
+
+The use case depends on the repository interface:
+
+```ts
+IUserRepository
+```
+
+It does not depend directly on `UserRepository` or Mongoose.
+
+---
+
+#### Infrastructure
+
+Contains external technology implementations.
+
+```text
+infrastructure/
+├── mongoose/
+└── repositories/
+```
+
+For example:
+
+```ts
+UserRepository implements IUserRepository
+```
+
+`UserRepository` contains the MongoDB/Mongoose implementation of the repository contract.
+
+---
+
+#### Presentation
+
+Handles HTTP-related concerns.
+
+```text
+presentation/
+├── controllers/
+├── factories/
+└── routes/
+```
+
+The controller handles the HTTP request and delegates the actual application work to a use case.
+
+---
+
+## Dependency Inversion
+
+The application uses an interface for the repository:
+
+```ts
+IUserRepository
+```
+
+The concrete repository implements that interface:
+
+```ts
+UserRepository implements IUserRepository
+```
+
+The use case depends on the interface:
+
+```ts
+constructor(
+  private readonly userRepo: IUserRepository
+) {}
+```
+
+The factory provides the concrete implementation:
+
+```ts
+const userRepository = new UserRepository();
+
+const createUserUseCase =
+  new CreateUserUseCase(userRepository);
+```
+
+This means the use case does not need to know whether the data is stored in MongoDB, PostgreSQL, or another database.
+
+```text
+             IUserRepository
+                  ▲
+                  │
+        ┌─────────┴─────────┐
+        │                   │
+ UserRepository      PostgresUserRepository
+   (MongoDB)
+```
+
+---
+
+## Factory Pattern
+
+The `UserFactory` is responsible for wiring dependencies together.
+
+```text
+UserFactory
+    │
+    ├── UserRepository
+    │
+    └── CreateUserUseCase
+```
+
+Example:
+
+```ts
+class UserFactory {
+  private readonly userRepository = new UserRepository();
+
+  private readonly createUserUseCaseInstance =
+    new CreateUserUseCase(this.userRepository);
+
+  get createUserUseCase(): CreateUserUseCase {
+    return this.createUserUseCaseInstance;
+  }
+}
+```
+
+The controller does not create repositories or use cases manually.
+
+It gets the already-configured use case from the factory.
+
+---
+
+## User Entity
+
+The `User` entity represents the User inside the domain.
+
+It contains domain state and behavior without knowing anything about MongoDB or Mongoose.
+
+The entity provides:
+
+```ts
+User.create()
+```
+
+for creating a new domain entity and:
+
+```ts
+User.reconstitute()
+```
+
+for rebuilding an existing entity from persisted data.
+
+---
+
+## Repository Pattern
+
+The repository contract is defined inside the domain:
+
+```ts
+IUserRepository
+```
+
+The implementation lives inside infrastructure:
+
+```ts
+UserRepository
+```
+
+This keeps the domain independent from the database.
+
+Example:
+
+```text
+Domain
+  │
+  └── IUserRepository
+          ▲
+          │ implements
+          │
+Infrastructure
+  │
+  └── UserRepository
+          │
+          ▼
+      UserModel
+          │
+          ▼
+       MongoDB
+```
+
+---
+
+## API
+
+### Create User
+
+**Endpoint**
+
+```http
+POST /api/users
+```
+
+**Request Body**
+
+```json
+{
+  "name": "Sajan",
+  "email": "sajan@example.com",
+  "password": "password123"
+}
+```
+
+**Response**
+
+```http
+201 Created
+```
+
+Example:
+
+```json
+{
+  "id": "user-id",
+  "name": "Sajan",
+  "email": "sajan@example.com",
+  "password": "password123",
+  "createdAt": "2026-09-29T00:00:00.000Z",
+  "updatedAt": "2026-09-29T00:00:00.000Z"
+}
+```
+
+> Password hashing and response sanitization can be added as part of the next implementation steps.
+
+---
+
+## Installation
+
+Clone the project and install dependencies:
+
+```bash
+pnpm install
+```
+
+---
+
+## Environment Variables
+
+Create a `.env` file:
+
+```env
+PORT=3000
+MONGO_URI=mongodb://localhost:27017/code-practice
+```
+
+---
+
+## Development
+
+Start the development server:
+
+```bash
+pnpm dev
+```
+
+The server will run on:
+
+```text
+http://localhost:3000
+```
+
+---
+
+## Build
+
+Compile TypeScript:
+
+```bash
+pnpm build
+```
+
+---
+
+## Production
+
+Run the compiled application:
+
+```bash
+pnpm start
+```
+
+---
+
+## Formatting
+
+Format the project using Prettier:
+
+```bash
+pnpm format
+```
+
+Check formatting without modifying files:
+
+```bash
+pnpm format:check
+```
+
+---
+
+## Learning Goals
+
+This project is being developed incrementally to practice:
+
+* Node.js
+* TypeScript
+* Express
+* MongoDB
+* Mongoose
+* Clean Architecture
+* Domain Entities
+* DTOs
+* Use Cases
+* Repository Pattern
+* Dependency Inversion
+* Dependency Injection
+* Factory Pattern
+* Controller/Route separation
+* Database abstraction
+* Domain-to-persistence mapping
+* Scalable project structure
+
+---
+
+## Planned Features
+
+### User
+
+* [x] User entity
+* [x] User DTO
+* [x] User repository interface
+* [x] User repository implementation
+* [x] User Mongoose model
+* [x] Create User use case
+* [x] User factory
+* [x] User controller
+* [x] User routes
+* [ ] Get User by ID
+* [ ] Update User
+* [ ] Delete User
+* [ ] User validation
+* [ ] Password hashing
+* [ ] Authentication
+* [ ] Authorization
+
+### Infrastructure
+
+* [x] MongoDB/Mongoose setup
+* [ ] Database connection abstraction
+* [ ] Error handling
+* [ ] Logging
+* [ ] Configuration management
+
+### Testing
+
+* [ ] Unit tests
+* [ ] Use case tests
+* [ ] Repository tests
+* [ ] Controller tests
+* [ ] Integration tests
+
+---
+
+## Core Principle
+
+The main architectural principle of this project is:
+
+> **Business logic should not depend on infrastructure details. Infrastructure should depend on business contracts.**
+
+For example:
+
+```text
+CreateUserUseCase
+       │
+       ▼
+IUserRepository
+       ▲
+       │
+UserRepository
+       │
+       ▼
+MongoDB
+```
+
+The use case knows **what it needs**, while the infrastructure decides **how that requirement is implemented**.
